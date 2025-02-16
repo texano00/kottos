@@ -1,7 +1,7 @@
 # kottos
 K(otto)s gives you a free of any charge remote Kubernetes environment for education purpose
 
-# Stay tuned
+<img src=assets/logo.webp>
 
 # tools
 
