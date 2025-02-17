@@ -1,2 +1,13 @@
 config:
   aws:region: us-east-1
+  aws:profile: hercules
+  tags:
+    owner: hercules
+    project: kottos
+    environment: dev
+  k8s_master:
+    instance_type: t2.micro
+    account_id: 741448958612
+    
+  k8s_node:
+    instance_type: t2.micro
