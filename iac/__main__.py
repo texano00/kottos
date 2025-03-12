@@ -5,6 +5,7 @@ from helpers.aws_organizations import AWSOrganizations
 from helpers.aws_sts import AWSSTS
 from components.networking import NetworkingComponent
 from components.workload import WorkloadComponent
+from components.sleep import SleepComponent
 
 config = pulumi.Config()
 aws_organizations_client = AWSOrganizations()
@@ -33,7 +34,7 @@ aws_sts = AWSSTS()
 
 worker_ips = []
 for i, account in enumerate(aws_accounts):
-
+    worker_index = i + 1
     credentials = aws_sts.assume_role(f"arn:aws:iam::{account['Id']}:role/ChildAccountRole",
                                       'PulumiSession')
 
@@ -46,10 +47,10 @@ for i, account in enumerate(aws_accounts):
 
     worker_networking = NetworkingComponent(f"worker_{account['Id']}",
         "worker",
-        1,
+        worker_index,
         opts=pulumi.ResourceOptions(provider=child_provider)
     )
-    worker_workload = WorkloadComponent("worker", worker_networking,
+    worker_workload = WorkloadComponent(f"worker_{account['Id']}", worker_networking,
                                         (public_key, private_key),
         opts=pulumi.ResourceOptions(provider=child_provider))
 
@@ -87,40 +88,12 @@ for i, account in enumerate(aws_accounts):
         opts=pulumi.ResourceOptions(provider=master_aws_provider)
     )
 
+    if i == 1:
+        break
 
-    break
-
-time.sleep(10)
+sleep_component = SleepComponent("delay-before-second", delay=60)
 master_workload = WorkloadComponent("master",
                                     master_networking,
                                     (public_key, private_key),
                                     worker_ips,
-                                    opts=pulumi.ResourceOptions(provider=master_aws_provider))
-
-
-#     # Worker Security Group
-#     worker_sg = aws.ec2.SecurityGroup(f"workerSg-{i}",
-#         vpc_id=worker_vpc.id,
-#         ingress=[
-#             {"protocol": "tcp", "from_port": 10250, "to_port": 10250, "cidr_blocks": ["10.0.0.0/8"]},  # Kubelet API
-#         ],
-#         provider=sub_provider
-#     )
-    
-#     # Create Worker Node
-#     worker_instance = aws.ec2.Instance(f"workerInstance-{i}",
-#         ami="ami-0abcdef1234567890",
-#         instance_type="t3.medium",
-#         vpc_security_group_ids=[worker_sg.id],
-#         subnet_id=worker_vpc.id,
-#         provider=sub_provider,
-#         user_data=f"""#!/bin/bash
-# curl -sSLf https://get.k0s.sh | sudo sh
-# sudo k0s install worker --token-file /tmp/k0s_token
-# sudo systemctl start k0sworker
-# """
-#     )
-    
-#     pulumi.export(f"worker_instance_{i}", worker_instance.public_ip)
-
-# pulumi.export("master_instance", master_instance.public_ip)
+                                    opts=pulumi.ResourceOptions(depends_on=[sleep_component],provider=master_aws_provider))

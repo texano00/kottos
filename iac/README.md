@@ -1,6 +1,29 @@
 
+# Worker Account first setup
+IAM Role name: ChildAccountRole
+Permissions policies:
+* IAMFullAccess
+* PowerUserAccess
+* 
+Trust relationships:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::741448958612:root"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {}
+        }
+    ]
+}
+```
 
-# Misc
+
+# Setup master ec2 instance
 curl -sSLf https://get.k0s.sh | sudo sh
 
 wget https://github.com/k0sproject/k0sctl/releases/download/v0.23.0/k0sctl-linux-amd64 -O k0sctl
@@ -35,6 +58,7 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 kubectl version --client
 
+## Connect to the cluster from the master node
 mkdir ~/.kube
 k0sctl kubeconfig --config k0s-cluster.yaml > ~/.kube/config
-alias k = kubectl
+alias k=kubectl

@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 
 def generate_ssh_keys():
     private_key_path = "/tmp/id_rsa"
@@ -22,3 +23,8 @@ def generate_ssh_keys():
     os.remove(public_key_path)
     
     return public_key, private_key
+
+
+def delay(seconds):
+    time.sleep(seconds) 
+    return None

@@ -74,11 +74,13 @@ spec:
       role: controller
     {workers}
 \"\"\" > /home/ec2-user/k0s-cluster.yaml
-k0sctl apply --config /home/ec2-user/k0s-cluster.yaml
+k0sctl apply -d --config /home/ec2-user/k0s-cluster.yaml
 
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 kubectl version --client
+mkdir /home/ec2-user/.kube
+chown -R ec2-user:ec2-user /home/ec2-user
             """
 
         self.instance = aws.ec2.Instance(f"{prefix}-ec2",
@@ -101,7 +103,7 @@ kubectl version --client
                                          """,
 
                                          iam_instance_profile=self.instance_profile.name,
-            opts=pulumi.ResourceOptions(provider=opts.provider))
+            opts=pulumi.ResourceOptions(provider=opts.provider, depends_on=opts.depends_on))
         
         self.register_outputs({
             "instance_id": self.instance.id
