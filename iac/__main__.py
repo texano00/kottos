@@ -31,7 +31,7 @@ private_key = config.require('k8s_ssh_private_key')
 
 
 aws_sts = AWSSTS()
-
+workers = []
 worker_ips = []
 for i, account in enumerate(aws_accounts):
     worker_index = i + 1
@@ -55,7 +55,12 @@ for i, account in enumerate(aws_accounts):
         opts=pulumi.ResourceOptions(provider=child_provider))
 
     worker_ips.append(worker_workload.private_ip)
-
+    workers.append({
+        "account_id": account['Id'],
+        "networking": worker_networking,
+        "workload": worker_workload,
+        "provider": child_provider
+    })
     # VPC Peering
     vpc_peering = aws.ec2.VpcPeeringConnection(f"peering-{i}",
         vpc_id=worker_networking.vpc.id,
@@ -80,7 +85,7 @@ for i, account in enumerate(aws_accounts):
     )
 
 
-    # add route to the worker VPC to the existing route table of the master VPC
+    # add route to the worker VPC to the existing route table of  the master VPC
     route = aws.ec2.Route(f"master-to-worker-route-{i}",
         route_table_id=master_networking.route_table.id,
         destination_cidr_block=worker_networking.vpc.cidr_block,
@@ -88,8 +93,50 @@ for i, account in enumerate(aws_accounts):
         opts=pulumi.ResourceOptions(provider=master_aws_provider)
     )
 
-    if i == 1:
+    if i == 2:
         break
+
+visited_edges = set()  # Per evitare duplicati
+
+for worker in workers:
+    for worker_neighbor in workers:
+        if worker['account_id'] == worker_neighbor['account_id']:
+            continue
+        # check if the edge has been visited already (unordered pair)
+        edge = (worker['account_id'], worker_neighbor['account_id'])
+        if edge in visited_edges or (edge[1], edge[0]) in visited_edges:
+            continue
+        visited_edges.add(edge)
+
+        vpc_peering = aws.ec2.VpcPeeringConnection(f"peering-{worker['account_id']}-{worker_neighbor['account_id']}",
+            vpc_id=worker['networking'].vpc.id,
+            peer_vpc_id=worker_neighbor['networking'].vpc.id,
+            peer_owner_id=worker_neighbor['account_id'],
+            opts=pulumi.ResourceOptions(provider=worker['provider'])
+        )
+
+        # Accept VPC Peering
+        accepter = aws.ec2.VpcPeeringConnectionAccepter(f"accepter-{worker['account_id']}-{worker_neighbor['account_id']}",
+            vpc_peering_connection_id=vpc_peering.id,
+            auto_accept=True,
+            opts=pulumi.ResourceOptions(provider=worker_neighbor['provider'])
+        )
+
+        # add route to the worker VPC to the existing route table of the worker_neighbor VPC
+        route = aws.ec2.Route(f"worker-to-worker-route-{worker['account_id']}-{worker_neighbor['account_id']}",
+            route_table_id=worker['networking'].route_table.id,
+            destination_cidr_block=worker_neighbor['networking'].vpc.cidr_block,
+            vpc_peering_connection_id=vpc_peering.id,
+            opts=pulumi.ResourceOptions(provider=worker['provider'])
+        )
+
+        # add route to the worker_neighbor VPC to the existing route table of  the worker VPC
+        route = aws.ec2.Route(f"worker-to-worker-route-{worker_neighbor['account_id']}-{worker['account_id']}",
+            route_table_id=worker_neighbor['networking'].route_table.id,
+            destination_cidr_block=worker['networking'].vpc.cidr_block,
+            vpc_peering_connection_id=vpc_peering.id,
+            opts=pulumi.ResourceOptions(provider=worker_neighbor['provider'])
+        )
 
 sleep_component = SleepComponent("delay-before-second", delay=60)
 master_workload = WorkloadComponent("master",
@@ -97,3 +144,4 @@ master_workload = WorkloadComponent("master",
                                     (public_key, private_key),
                                     worker_ips,
                                     opts=pulumi.ResourceOptions(depends_on=[sleep_component],provider=master_aws_provider))
+
