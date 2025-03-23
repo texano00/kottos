@@ -21,31 +21,18 @@ spec:
               charts:
               - name: aws-cloud-controller-manager
                 chartname: aws-cloud-controller-manager/aws-cloud-controller-manager
-                version: "0.0.8"
+                version: 0.0.8
                 timeout: 10m
                 order: 1
                 namespace: kube-system
                 values: |
-                  nodeSelector: 
-                    node-role.kubernetes.io/worker: ""
-          api:
-            address: 10.0.1.10
-            k0sApiPort: 9443
-            port: 6443
-            sans:
-            - 10.0.1.10
-            - fe80::8ff:c5ff:fe9c:951
-          controllerManager: {}
-          installConfig:
-            users:
-              etcdUser: etcd
-              kineUser: kube-apiserver
-              konnectivityUser: konnectivity-server
-              kubeAPIserverUser: kube-apiserver
-              kubeSchedulerUser: kube-scheduler
-          konnectivity:
-            adminPort: 8133
-            agentPort: 8132
+                  args:
+                    - --v=2
+                    - --cloud-provider=aws
+                    - --configure-cloud-routes=false
+                  nodeSelector:
+                    kubernetes.io/os: linux
+                    node-role.kubernetes.io/control-plane: null
           network:
             clusterDomain: cluster.local
             dualStack:
@@ -81,7 +68,6 @@ spec:
             type: etcd
           telemetry:
             enabled: true
-
     hosts:
     - ssh:
         address: 10.0.1.10
@@ -95,28 +81,37 @@ spec:
         user: ec2-user
         port: 22
         keyPath: ~/.ssh/id_rsa
+      role: worker
       installFlags:
         - --enable-cloud-provider
-        - --kubelet-extra-args="--cloud-provider=external"
-      role: worker
+        - --kubelet-extra-args=--cloud-provider=external
 
     - ssh:
         address: 10.2.1.10
         user: ec2-user
         port: 22
         keyPath: ~/.ssh/id_rsa
+      role: worker
       installFlags:
         - --enable-cloud-provider
-        - --kubelet-extra-args="--cloud-provider=external"
-      role: worker
-
+        - --kubelet-extra-args=--cloud-provider=external
 
     - ssh:
         address: 10.3.1.10
         user: ec2-user
         port: 22
         keyPath: ~/.ssh/id_rsa
+      role: worker
       installFlags:
         - --enable-cloud-provider
-        - --kubelet-extra-args="--cloud-provider=external"
+        - --kubelet-extra-args=--cloud-provider=external
+
+    - ssh:
+        address: 10.4.1.10
+        user: ec2-user
+        port: 22
+        keyPath: ~/.ssh/id_rsa
       role: worker
+      installFlags:
+        - --enable-cloud-provider
+        - --kubelet-extra-args=--cloud-provider=external

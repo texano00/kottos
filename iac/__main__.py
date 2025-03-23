@@ -93,7 +93,7 @@ for i, account in enumerate(aws_accounts):
         opts=pulumi.ResourceOptions(provider=master_aws_provider)
     )
 
-    if i == 2:
+    if i == 3:
         break
 
 visited_edges = set()  # Per evitare duplicati

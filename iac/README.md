@@ -62,3 +62,12 @@ kubectl version --client
 mkdir ~/.kube
 k0sctl kubeconfig --config k0s-cluster.yaml > ~/.kube/config
 alias k=kubectl
+
+# aws controller
+helm repo add aws-cloud-controller-manager https://kubernetes.github.io/cloud-provider-aws
+helm -n kube-system upgrade --install aws-cloud-controller-manager aws-cloud-controller-manager/aws-cloud-controller-manager --values values.yaml
+
+# TODO
+* [ ] Setup SSO
+* [ ] Setup time lived access with ephemeral resources deleted automatically once the time is end
+* [ ] Setup OPA to limit the users' behavior

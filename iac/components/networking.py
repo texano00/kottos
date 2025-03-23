@@ -17,7 +17,8 @@ class NetworkingComponent(pulumi.ComponentResource):
                                cidr_block=f"10.{index}.0.0/16",
                                enable_dns_support=True,
                                enable_dns_hostnames=True,
-                               tags={"Name": f"{name}-vpc"},
+                               tags={"Name": f"{name}-vpc",
+                                     "kubernetes.io/cluster/k0s": "owned"},
             opts=pulumi.ResourceOptions(provider=opts.provider))
 
         # create internet gateway and attach it to the VPC
@@ -60,6 +61,13 @@ class NetworkingComponent(pulumi.ComponentResource):
 
         self.subnet = aws.ec2.Subnet(f"{prefix}-subnet",
                                      vpc_id=self.vpc.id,
+                                     tags= {
+                                         "Name": f"{name}-subnet",
+                                         "kubernetes.io/role/internal-elb": "1",
+                                         "kubernetes.io/cluster/k0s": "owned",
+                                         "kubernetes.io/role/alb-ingress": "1",
+                                         "kubernetes.io/role/elb": "1",
+                                     },
                                      cidr_block=self.subnet_cidr,
                                      map_public_ip_on_launch=True,
                                      availability_zone="us-east-1a",
